@@ -6,7 +6,7 @@ import axios from 'axios';
 import Details from "../Details/Details"
 
 //Iconos
-import { AiOutlineSearch } from "react-icons/ai";
+import { AiOutlineSearch, AiFillEye } from "react-icons/ai";
 
 //Archivo de configuracion
 import { environment } from '../../config/settings';
@@ -19,11 +19,12 @@ class Received extends Component {
         keyword: '',
         filtroTipo: 'fk_TipoCo',
         filtroFecha: 'fechaEmisión',
-        filtroDepen: 'fk_DependenciaO'
+        filtroDepen: 'fk_DependenciaO',
+        files: []
     }
 
-    componentDidMount() {
-        this.getReceivedCorrespondence();
+    async componentDidMount() {
+        await this.getReceivedCorrespondence();
         this.getDependencies();
     }
 
@@ -47,9 +48,36 @@ class Received extends Component {
         axios.get(`${environment.urlServer}/correspondence/getReceived/${localStorage.getItem("idusuario")}`).then(res => {
             this.setState({ correspondencias: res.data });
             this.setState({ corresFiltradas: res.data });
+            this.checkCorrespondenceFile(res.data);
         }).catch(error => {
             console.log(error.message);
         });
+    }
+
+    checkCorrespondenceFile(_correspondencias) {
+        const correspondencias = _correspondencias;
+        for (let index = 0; index < correspondencias.length; index++) {
+            const element = correspondencias[index];
+            var id_Correspondencia = element.id_Correspondencia;
+            
+            axios.get(`${environment.urlServer}/files/link/${id_Correspondencia}`).then(res => {
+                if (res.data == "Sin archivo") {
+                    console.log("sin archivo");                   
+                    correspondencias[index]["file"] = false;
+                } else {
+                    console.log(res.data);
+                    var link  = res.data.link.split("/").pop();
+                    correspondencias[index]["file"] = link;
+                }
+                this.setState({ correspondencias: correspondencias });
+                //return correspondencias;
+                
+            }).catch(error => {
+                console.log(error.message);
+            });
+            
+        }
+        
     }
 
     handleFilter = async (event) => {
@@ -75,6 +103,7 @@ class Received extends Component {
         await axios.get(`${environment.urlServer}/correspondence/filterReceived/${this.state.filtroTipo}/${this.state.filtroFecha}/${this.state.filtroDepen}/${localStorage.getItem("idusuario")}`).then(res => {
             this.setState({ correspondencias: res.data });
             this.setState({ corresFiltradas: res.data });
+            this.checkCorrespondenceFile(res.data)
         }).catch(error => {
             console.log(error.message);
         });
@@ -89,6 +118,7 @@ class Received extends Component {
     }
 
     render() {
+        console.log(this.state)
         return (
             <div className="sentcontent">
                 <div className="buttonBack">
@@ -140,8 +170,8 @@ class Received extends Component {
                 <table>
                     <tbody>
                         {this.state.correspondencias.map(elemento => (
-                            <tr className="sentrow" onClick={() => this.seeDetails(elemento.id_Correspondencia)}>
-                                <td>
+                            <tr className="sentrow">
+                                <td onClick={() => this.seeDetails(elemento.id_Correspondencia)}>
                                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                                         <p className="info_de"><span>De: </span>{elemento.usuarioO}</p>
                                         <p className="info_para"><span>Fecha: </span>
@@ -155,12 +185,17 @@ class Received extends Component {
                                 </td>
                                 <td style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                                     <p className="info_para">{elemento.tipo}</p>
-                                    <br />
+                                   
                                     {
                                         elemento.leida === 0 ?
-                                            <div style={{ width: "10px", height: "10px", borderRadius: "100%", backgroundColor: "red" }}></div>
-                                            : <div style={{ width: "10px", height: "10px", borderRadius: "100%", backgroundColor: "gray" }}></div>
+                                            <div style={{ width: "10px", height: "10px", borderRadius: "100%", backgroundColor: "red", marginTop: ".5em", marginBottom: ".5em"}}></div>
+                                            : <div style={{ width: "10px", height: "10px", borderRadius: "100%", backgroundColor: "gray",marginTop: ".5em", marginBottom: ".5em" }}></div>
                                     }
+                                   
+                                    {
+                                        (elemento.file) != false && elemento.file ? <a href={environment.urlServer+'/files/download/'+elemento.file} target="_blank"> <AiFillEye /></a > : <AiFillEye style={{opacity: ".1"}}/>
+                                    }
+                                    
                                 </td>
                             </tr>
                         ))}

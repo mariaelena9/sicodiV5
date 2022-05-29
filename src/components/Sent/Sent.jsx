@@ -33,6 +33,8 @@ class Sent extends Component {
         axios.get(`${environment.urlServer}/correspondence/getSent/${localStorage.getItem("idusuario")}`).then(res => {
             this.setState({ correspondencias: res.data });
             this.setState({ corresFiltradas: res.data });
+            console.log(res.data)
+            this.checkCorrespondenceFile(res.data);
         }).catch(error => {
             console.log(error.message);
         });
@@ -76,6 +78,7 @@ class Sent extends Component {
         await axios.get(`${environment.urlServer}/correspondence/filterSent/${this.state.filtroEstado}/${this.state.filtroTipo}/${this.state.filtroFecha}/${this.state.filtroDepen}/${localStorage.getItem("idusuario")}`).then(res => {
             this.setState({ correspondencias: res.data });
             this.setState({ corresFiltradas: res.data });
+            this.checkCorrespondenceFile(res.data);
         }).catch(error => {
             console.log(error.message);
         });
@@ -87,6 +90,32 @@ class Sent extends Component {
         }).catch(error => {
             console.log(error.message);
         });
+    }
+
+    checkCorrespondenceFile(_correspondencias) {
+        const correspondencias = _correspondencias;
+        for (let index = 0; index < correspondencias.length; index++) {
+            const element = correspondencias[index];
+            var id_Correspondencia = element.id_Correspondencia;
+            
+            axios.get(`${environment.urlServer}/files/link/${id_Correspondencia}`).then(res => {
+                if (res.data == "Sin archivo") {
+                    console.log("sin archivo");                   
+                    correspondencias[index]["file"] = false;
+                } else {
+                    console.log(res.data);
+                    var link  = res.data.link.split("/").pop();
+                    correspondencias[index]["file"] = link;
+                }
+                this.setState({ correspondencias: correspondencias });
+                //return correspondencias;
+                
+            }).catch(error => {
+                console.log(error.message);
+            });
+            
+        }
+        
     }
 
     render() {
@@ -167,8 +196,8 @@ class Sent extends Component {
                 <table>
                     <tbody>
                         {this.state.correspondencias.map(elemento => (
-                            <tr className="sentrow" onClick={() => this.seeDetails(elemento.id_Correspondencia)}>
-                                <td>
+                            <tr className="sentrow" >
+                                <td onClick={() => this.seeDetails(elemento.id_Correspondencia)}>
                                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                                         <p className="info_para"><span>Para: </span>{elemento.usuarioD}</p>
                                         <p className="info_para"><span>Fecha: </span>
@@ -187,7 +216,7 @@ class Sent extends Component {
                                     <p className="info_para">{elemento.estatus}</p>
 
                                     <div>
-                                        <AiFillEye />
+                                        {(elemento.file) != false && elemento.file ? <a href={environment.urlServer+'/files/download/'+elemento.file} target="_blank"> <AiFillEye /></a > : <AiFillEye style={{opacity: ".1"}}/>}
                                     </div>
                                 </td>
 
